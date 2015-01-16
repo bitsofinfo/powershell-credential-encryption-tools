@@ -1,6 +1,6 @@
 ﻿# powershell-credential-tools
 
-### credentialEncryptor.ps1
+### credentialEncryptor.ps1 and decryptUtil.ps1
 
 **Simple script for AES encrypting a set of credentials**
 
@@ -20,3 +20,5 @@
 * Optionally if -validate $true/$false is passed; as a test, both of the files are read back in and used to decrypt the credentials to verify that the decryption works and the inputs match what was decrypted. Note this potentially exposes the credentials in the clear in memory. 
 
 * The resulting files can then be used by other Powershell scripts which need to load up stored credentials locally and make use of them for various purposes. The responsibility is on the you to properly secure the secret.key!
+
+* Also see **decryptUtil.ps1** for some useful and supporting functions 
