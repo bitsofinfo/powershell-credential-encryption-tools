@@ -9,32 +9,41 @@ function secureString2Cleartext($secureString) {
     return $clear
 }
 
-# Decrypt the named property from the jsonCredentialFile using b64KeyFile
-# all file variables are expected to be legit paths to the respective files
-function decrypt2SecureString($jsonCredentialFile, $b64KeyFile, $property) {
+# Loads the bas64 encoded key file and returns it as a SecureString
+function loadKeyFile2SecureString($b64KeyFile) {
 
     $keyAsB64 = get-content $b64KeyFile
-    $jsonCredentials = get-content $jsonCredentialFile | Out-String
-
-    $credentialObj = ConvertFrom-JSON -InputObject $jsonCredentials
-
-    $propertyEncrypted = $credentialObj."$property"
 
     # convert key from b64 to bytes -> unicode -> secure string
     $rawKeyBytes = [Convert]::FromBase64String($keyAsB64)
     $keyBytesUnicode = [System.Text.Encoding]::Unicode.GetString($rawKeyBytes)
     $keyAsSecureString = ConvertTo-SecureString -String $keyBytesUnicode -AsPlainText -Force
 
+    Remove-Variable keyAsB64
+    Remove-Variable keyBytesUnicode
+    Remove-Variable rawKeyBytes
+
+    return $keyAsSecureString
+}
+
+# Decrypt the named property from the jsonCredentialFile using b64KeyFile
+# all file variables are expected to be legit paths to the respective files
+function decrypt2SecureString($jsonCredentialFile, $b64KeyFile, $property) {
+
+    $jsonCredentials = get-content $jsonCredentialFile | Out-String
+
+    $credentialObj = ConvertFrom-JSON -InputObject $jsonCredentials
+
+    $propertyEncrypted = $credentialObj."$property"
+
+    $keyAsSecureString = loadKeyFile2SecureString $b64KeyFile
+
     # decrypt to a SecureStrings
     $secureString = ConvertTo-SecureString -String $propertyEncrypted -SecureKey $keyAsSecureString
 
-
-    Remove-Variable keyAsB64
     Remove-Variable jsonCredentials
     Remove-Variable credentialObj
     Remove-Variable propertyEncrypted
-    Remove-Variable rawKeyBytes
-    Remove-Variable keyBytesUnicode
     Remove-Variable keyAsSecureString
 
     return $secureString
