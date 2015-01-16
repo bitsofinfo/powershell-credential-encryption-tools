@@ -2,7 +2,7 @@
 
 ### credentialEncryptor.ps1 and decryptUtil.ps1
 
-**Simple script for AES encrypting a set of credentials**
+**Simple script for AES encrypting a set of portable credentials**
 
 **USAGE:** ```./credentialEncryptor.ps1 [-validate $true | $false]```
 
@@ -20,6 +20,6 @@
 
 * Optionally if -validate $true/$false is passed; as a test, both of the files are read back in and used to decrypt the credentials to verify that the decryption works and the inputs match what was decrypted. Note this potentially exposes the credentials in the clear in memory. 
 
-* The resulting files can then be used by other Powershell scripts which need to load up stored credentials locally and make use of them for various purposes. The responsibility is on the you to properly secure the secret.key!
+* The resulting files can then be used by other Powershell scripts which need to load up stored credentials locally and make use of them for various purposes. It is important to note that the resulting files are **portable** and nothing about the encryption/decryption routines is bound to the security context of the local user running these commands. That noted; **the responsibility is on the you to properly secure the secret.key!**
 
 * Also see **decryptUtil.ps1** for some useful and supporting functions, including an example of loading the JSON file of credentials into a PSCredential
