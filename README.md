@@ -1,4 +1,4 @@
-﻿# powershell-credential-tools
+﻿# powershell-credential-encryption-tools
 
 ### credentialEncryptor.ps1 and decryptUtil.ps1
 
