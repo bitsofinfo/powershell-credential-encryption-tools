@@ -4,7 +4,8 @@
 
 **Simple script for AES encrypting a set of portable credentials**
 
-**USAGE:** ```./credentialEncryptor.ps1 -k [pathToKeyFile] -o [pathToCredFile] [-validate $true | $false]```
+**USAGE:**  
+```./credentialEncryptor.ps1 -k [pathToKeyFile] -o [pathToCredFile] [-validate $true | $false]```
 
 
 * Prompts for a username/password to encrypt
