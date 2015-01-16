@@ -1,6 +1,6 @@
 ﻿# powershell-credential-tools
 
-### credentialEncyptor.ps1
+### credentialEncryptor.ps1
 
 **Simple script for encrypting a set of credentials**
 
