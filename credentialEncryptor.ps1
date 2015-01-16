@@ -1,3 +1,38 @@
+#############################################
+# credentialEncryptor.ps1
+# - Tool for encrypting a set of credentials
+# 
+# a) Prompts for a username/password to encrypt
+#    and formats the input into a JSON structure
+#    as follows:
+#
+#    { "username" : "value", "password": "value" }
+#
+# b) Prompts for a directory to write the output to
+#
+# c) Generates a 256bit secret key via a secure 
+#    random byte generator, and encrypts the JSON
+#    structure with this key via ConvertFrom-SecureString
+#    which does so via AES
+#
+# d) The resulting encrypted bytes are stored 
+#    in the output directory as in a file 
+#    named: encrypted.credentials
+#
+# e) The secret key's bytes are Base64 encoded
+#    and stored in the output
+#    directory in a file named: secret.key
+#
+# f) Both of the above files have their permissions
+#    changed to R/W by the Administrators group 
+#    only.
+#
+# g) As a test, both of the files are read back 
+#    in and used to decrypt the credentials
+#    to verify that the decryption works 
+#
+#############################################
+
 # Collect inputs
 $username = Read-Host "username to encrypt"
 $password = Read-Host "password to encrypt"
