@@ -1,56 +1,56 @@
 #############################################
-# credentialEncryptor.ps1
+# credentialEncryptor.ps1 [-validate $true|$false]
 # - Tool for encrypting a set of credentials
 # 
 # a) Prompts for a username/password to encrypt
-#    and formats the input into a JSON structure
-#    as follows:
+#    and the directory to write to
 #
-#    { "username" : "value", "password": "value" }
+# b) Generates a 256bit secret key via a secure 
+#    random byte generator, and encrypts (AES) 
+#    the credentials and builds a JSON structure as follows
 #
-# b) Prompts for a directory to write the output to
+#    { "username" : "AESEncryptedValue", "password": "AESEncryptedValue" }
 #
-# c) Generates a 256bit secret key via a secure 
-#    random byte generator, and encrypts the JSON
-#    structure with this key via ConvertFrom-SecureString
-#    which does so via AES
-#
-# d) The resulting encrypted bytes are stored 
-#    in the output directory as in a file 
+# c) The resulting JSON is stored in output dir
 #    named: encrypted.credentials
 #
-# e) The secret key's bytes are Base64 encoded
-#    and stored in the output
-#    directory in a file named: secret.key
+# d) The secret key's bytes are Base64 encoded
+#    and stored in the output directory 
+#    in a file named: secret.key
 #
 # f) Both of the above files have their permissions
 #    changed to R/W by the Administrators group 
 #    only.
 #
-# g) As a test, both of the files are read back 
+# g) Optionally if -validate $true/$false is passed
+#    As a test, both of the files are read back 
 #    in and used to decrypt the credentials
-#    to verify that the decryption works 
+#    to verify that the decryption works and the
+#    inputs match what was decrypted. Note this
+#    potentially exposes the credentials in the
+#    clear in memory. 
 #
 #############################################
 
+# If -validate $true, the encryption will be validated
+# by reading back in the encrypted values and generated
+# key and decrypting the data to cleartext and ensuring
+# it matches what the user entered to validate the routine
+param([bool]$validate=$false)
+
+# include
+. "./decryptUtil.ps1"
+
 # Collect inputs
-$username = Read-Host "username to encrypt"
-$password = Read-Host "password to encrypt"
+$usernameSecureString = Read-Host "username to encrypt" -AsSecureString
+$passwordSecureString = Read-Host "password to encrypt" -AsSecureString
 $outputPath = Read-Host "Enter full path for output files"
 
 $credentialsFile = "encrypted.credentials"
 $keyFile = "secret.key"
 
-# Convert to a credentials structure, -> JSON -> JSON as SecureString
-$credentialsObj = [PSCustomObject]@{username = $username;password = $password}
-$jsonCredentials = ConvertTo-JSON $credentialsObj
-$jsonCredsAsSecureString = ConvertTo-SecureString -String $jsonCredentials -AsPlainText -Force
-
-# clear out the temp variables
-Remove-Variable username
-Remove-Variable password
-
-# Generate a 32byte key, we will use this key to encrypt the JSON
+# Generate a 32byte key, we will use this key to encrypt the uname/password within
+# the JSON file
 $secureRandom = [System.Security.Cryptography.RNGCryptoServiceProvider]::Create()
 $rawKeyBytes = New-Object byte[](32)
 $secureRandom.GetBytes($rawKeyBytes)
@@ -59,21 +59,20 @@ $secureRandom.GetBytes($rawKeyBytes)
 $keyBytesUnicode = [System.Text.Encoding]::Unicode.GetString($rawKeyBytes)
 $keyAsSecureString = ConvertTo-SecureString -String $keyBytesUnicode -AsPlainText -Force
 
-# Now convert the jsonCredsAsSecureString -> AES encrypted version using the key generated above
-$encryptedJSONCredentials = ConvertFrom-SecureString -SecureString $jsonCredsAsSecureString -SecureKey $keyAsSecureString
+# Now convert the username/pw SecureStrings -> AES encrypted versions using the key generated above
+$encryptedUsername = ConvertFrom-SecureString -SecureString $usernameSecureString -SecureKey $keyAsSecureString
+$encryptedPassword = ConvertFrom-SecureString -SecureString $passwordSecureString -SecureKey $keyAsSecureString
+
+# Convert to a credentials structure, -> JSON -> JSON as SecureString
+$credentialsObj = [PSCustomObject]@{username = $encryptedUsername;password = $encryptedPassword}
+$jsonCredentials = ConvertTo-JSON $credentialsObj
 
 # Write the encrypted JSON credentials to disk
-$encryptedJSONCredentials | Out-File -Encoding UTF8 -FilePath $outputPath\$credentialsFile
+$jsonCredentials | Out-File -Encoding UTF8 -FilePath $outputPath\$credentialsFile
 
 # Write the key out to disk
 [Convert]::ToBase64String($rawKeyBytes) | Out-File -Encoding UTF8 -FilePath $outputPath\$keyFile
 
-
-Remove-Variable jsonCredsAsSecureString
-Remove-Variable rawKeyBytes
-Remove-Variable keyBytesUnicode
-Remove-Variable keyAsSecureString
-Remove-Variable encryptedJSONCredentials
 
 
 ##################################################
@@ -88,7 +87,7 @@ $keyACL = Get-Acl $outputPath\$keyFile
 $credentialsACL.SetAccessRuleProtection($true,$false)
 $keyACL.SetAccessRuleProtection($true,$false)
 
-$aclPermissions = [System.Security.AccessControl.FileSystemRights]"Read","Write"
+$aclPermissions = [System.Security.AccessControl.FileSystemRights]"FullControl"
 $aclInheritanceFlags = [System.Security.AccessControl.InheritanceFlags]::None
 $aclPropogationFlags = [System.Security.AccessControl.PropagationFlags]::None
 $aclType = [System.Security.AccessControl.AccessControlType]::Allow
@@ -112,48 +111,54 @@ $keyACL.AddAccessRule($aclObject)
 Set-Acl -Path $outputPath\$credentialsFile -AclObject $credentialsACL
 Set-Acl -Path $outputPath\$keyFile -AclObject $keyACL
 
-##################################
-# part 2... VALIDATE,
-# load up key + encrypted
-##################################
-$keyAsB64 = get-content $outputPath\$keyFile
-$encryptedJSONCredentials2 = get-content $outputPath\$credentialsFile
 
-# convert key from b64 to bytes -> unicode -> secure string
-$rawKeyBytes2 = [Convert]::FromBase64String($keyAsB64)
-$keyBytesUnicode2 = [System.Text.Encoding]::Unicode.GetString($rawKeyBytes2)
-$keyAsSecureString2 = ConvertTo-SecureString -String $keyBytesUnicode2 -AsPlainText -Force
+if ($validate) {
+    ##################################
+    # Validate
+    ##################################
+    $usernameSecureString2 = decrypt2SecureString $outputPath\$credentialsFile $outputPath\$keyFile 'username'
+    $passwordSecureString2 = decrypt2SecureString $outputPath\$credentialsFile $outputPath\$keyFile 'password'
 
-# decrypt to a SecureString
-$jsonCredsAsSecureString = ConvertTo-SecureString -String $encryptedJSONCredentials2 -SecureKey $keyAsSecureString2
+    # what was entered via the prompt
+    $usernameClear = secureString2Cleartext $usernameSecureString
+    $passwordClear = secureString2Cleartext $passwordSecureString
 
-# convert from SecureString to plain-text... for compare
-$bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($jsonCredsAsSecureString)
-$jsonCredentials2 = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) # zero memory
+    # what was decrypted...
+    $usernameClear2 = secureString2Cleartext $usernameSecureString2
+    $passwordClear2 = secureString2Cleartext $passwordSecureString2
 
 
-# compare decrypted to what we wrote... ok?
-if ($jsonCredentials -eq $jsonCredentials2) {
-    Write-Output ""
-    Write-Output ""
-    Write-Output "******************************************"
-    Write-Output "Validated OK!"
-    Write-Output "Output files written to: $outputPath"
-    Write-Output ""
-    Write-Output "Encrypted credentials file: $outputPath\$credentialsFile"
-    Write-Output "Key file: $outputPath\$keyFile"
-    Write-Output ""
-    Write-Output "IMPORTANT: KEY FILE MUST BE SECURED!"
-    Write-Output "(Permissions auto-set to Administrators only)"
-    Write-Output "******************************************"
-    Write-Output ""
-    Write-Output ""
+    # compare decrypted to what we wrote... ok?
+    if ($usernameClear -eq $usernameClear2 -and $passwordClear -eq $passwordClear2) {
+        Write-Output ""
+        Write-Output ""
+        Write-Output "******************************************"
+        Write-Output "Validated OK! (you should term this session)"
+        Write-Output "******************************************"
+        Write-Output ""
+        Write-Output ""
 
-} else {
-    Write-Output ""
-    Write-Error "Validation Failure"
-    Write-Output ""
+    } else {
+        Write-Output ""
+        Write-Error "Validation Failure"
+        Write-Output ""
+    }
+
 }
+
+Write-Output ""
+Write-Output ""
+Write-Output "******************************************"
+Write-Output "Output files written to: $outputPath"
+Write-Output ""
+Write-Output "Encrypted credentials file: $outputPath\$credentialsFile"
+Write-Output "Key file: $outputPath\$keyFile"
+Write-Output ""
+Write-Output "IMPORTANT: KEY FILE MUST BE SECURED!"
+Write-Output "(Permissions auto-set to Administrators only)"
+Write-Output "******************************************"
+Write-Output ""
+Write-Output ""
+
 
 Remove-Variable * -ErrorAction SilentlyContinue
