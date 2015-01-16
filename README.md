@@ -4,6 +4,7 @@
 
 **Simple script for AES encrypting a set of credentials**
 
+**USAGE:** ```./credentialEncryptor.ps1 [-validate $true | $false]```
 
 * Prompts for a username/password to encrypt and the directory to write to
 
