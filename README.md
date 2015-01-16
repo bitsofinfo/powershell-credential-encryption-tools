@@ -22,4 +22,4 @@
 
 * The resulting files can then be used by other Powershell scripts which need to load up stored credentials locally and make use of them for various purposes. The responsibility is on the you to properly secure the secret.key!
 
-* Also see **decryptUtil.ps1** for some useful and supporting functions 
+* Also see **decryptUtil.ps1** for some useful and supporting functions, including an example of loading the JSON file of credentials into a PSCredential
