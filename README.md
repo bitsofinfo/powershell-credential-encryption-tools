@@ -4,9 +4,12 @@
 
 **Simple script for AES encrypting a set of portable credentials**
 
-**USAGE:**  
+**INFO:**  
 ```./credentialEncryptor.ps1 -k [pathToKeyFile] -o [pathToCredFile] [-validate $true | $false]```
 
+**decryptUtil.ps1** - is a script intended to be included in your powershell scripts where you need to load the credentials you stored offline. This script provides a set of functions to do this.
+
+**credentialEncryptor USAGE**
 
 * Prompts for a username/password to encrypt
 
@@ -24,4 +27,4 @@
 
 * The resulting files can then be used by other Powershell scripts which need to load up stored credentials locally and make use of them for various purposes. It is important to note that the resulting files are **portable** and nothing about the encryption/decryption routines is bound to the security context of the local user running these commands. That noted; **the responsibility is on the you to properly secure the secret.key!**
 
-* Also see **decryptUtil.ps1** for some useful and supporting functions, including an example of loading the JSON file of credentials into a PSCredential
+* Also see **decryptUtil.ps1** for some useful and supporting functions, including an example of loading the JSON file of credentials into a PSCredential. This script is intended to be included in other powershell scripts that need to load the credentials.
